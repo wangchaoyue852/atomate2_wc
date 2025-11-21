@@ -223,7 +223,8 @@ def generate_phonon_displacements(
     supercell_matrix: np.array,
     displacement: float,
     num_displaced_supercells: int,
-    cal_anhar_fcs: bool,
+    cal_3rd_order: bool,
+    cal_4th_order: bool,
     cal_ther_cond: bool,
     displacement_anhar: float,
     num_disp_anhar: int,
@@ -295,10 +296,12 @@ def generate_phonon_displacements(
     
     # ========== 2. 生成非谐位移（如果需要） ==========
     n_anharmonic = 0
-    if cal_anhar_fcs or cal_ther_cond:
+    if cal_3rd_order or cal_4th_order or cal_ther_cond:
         logger.info("=" * 80)
-        if cal_anhar_fcs:
-            logger.info("生成非谐位移（用于完整非谐性：2+3+4 阶）")
+        if cal_4th_order:
+            logger.info("生成非谐位移（用于四阶力常数：2+3+4 阶）")
+        elif cal_3rd_order:
+            logger.info("生成非谐位移（用于三阶力常数：2+3 阶）")
         else:
             logger.info("生成非谐位移（用于热导率：2+3 阶）")
         logger.info("=" * 80)
@@ -368,8 +371,9 @@ def generate_frequencies_eigenvectors(
     supercell_matrix: np.array,
     displacement: float,
     fcs_cutoff_radius: list[int],
-    cal_anhar_fcs: bool,              # 四阶力常数（强非谐性）
-    cal_ther_cond: bool,              # 热导率（三阶力常数）
+    cal_3rd_order: bool,
+    cal_4th_order: bool,
+    cal_ther_cond: bool,
     renorm_phonon: bool,
     renorm_temp: list[int],           # ← 添加这行
     ther_cond_mesh: list[int],
@@ -426,36 +430,30 @@ def generate_frequencies_eigenvectors(
     logger.info("=" * 80)
     
     # 验证1: 声子重整化需要四阶力常数
-    if renorm_phonon and not cal_anhar_fcs:
-        logger.error("参数冲突: renorm_phonon=True 需要 cal_anhar_fcs=True")
+    if renorm_phonon and not cal_4th_order:
+        logger.error("参数冲突: renorm_phonon=True 需要cal_4th_order=True"")
         raise ValueError(
             "声子重整化需要四阶力常数（2+3+4 阶）！\n"
-            "请设置: cal_anhar_fcs=True"
+             "请设置: cal_4th_order=True"
         )
     
     # 验证2: 截断半径检查
-    if cal_anhar_fcs or cal_ther_cond:
+    if cal_3rd_order or cal_4th_order or cal_ther_cond:
         if len(fcs_cutoff_radius) < 2:
             raise ValueError(
                 f"非谐计算需要至少 [2阶, 3阶] 截断半径\n"
                 f"当前: {fcs_cutoff_radius}"
             )
         
-        if cal_anhar_fcs and len(fcs_cutoff_radius) < 3:
+        if cal_4th_order and len(fcs_cutoff_radius) < 3:
             logger.warning("四阶截断半径未定义，使用默认值 10 Bohr")
             fcs_cutoff_radius.append(10)
     
     # 显示配置
-    logger.info("")
-    logger.info("计算配置:")
-    logger.info(f"   ├─ 谐波声子: 是")
-    
-    if cal_anhar_fcs:
-        logger.info(f"   ├─ 完整非谐性: 是 (2+3+4 阶)")
-        logger.info(f"   │  └─ 用于：声子重整化")
-    elif cal_ther_cond:
+    if cal_4th_order:
+        logger.info(f"   ├─ 四阶力常数: 是 (2+3+4 阶)")
+    elif cal_3rd_order:
         logger.info(f"   ├─ 三阶力常数: 是 (2+3 阶)")
-        logger.info(f"   │  └─ 用于：热导率")
     else:
         logger.info(f"   ├─ 非谐效应: 否")
     
@@ -664,17 +662,24 @@ def generate_frequencies_eigenvectors(
     fc_file = _DEFAULT_FILE_PATHS["force_constants"]
 
     # 首先检查参数组合的有效性
-    if cal_anhar_fcs and cal_ther_cond:
+    # 首先检查参数组合的有效性
+    if cal_4th_order and cal_ther_cond:
         raise ValueError(
-            "cal_anhar_fcs 和 cal_ther_cond 不能同时为 True!\n"
+            "cal_4th_order 和 cal_ther_cond 不能同时为 True!\n"
             "请选择以下模式之一:\n"
-            "1. 完整非谐性（2+3+4阶）: cal_anhar_fcs=True, cal_ther_cond=False\n"
-            "2. 热导率（2+3阶）: cal_anhar_fcs=False, cal_ther_cond=True\n" 
-            "3. 纯谐波（2阶）: cal_anhar_fcs=False, cal_ther_cond=False"
+            "1. 四阶力常数（2+3+4阶）: cal_4th_order=True, cal_ther_cond=False\n"
+            "2. 热导率（2+3阶）: cal_3rd_order=True, cal_ther_cond=True\n" 
+            "3. 纯谐波（2阶）: cal_3rd_order=False, cal_4th_order=False, cal_ther_cond=False"
         )
+    
+    # 验证3: cal_4th_order 需要 cal_3rd_order
+    if cal_4th_order and not cal_3rd_order:
+        raise ValueError(
+            "cal_4th_order=True 需要 cal_3rd_order=True\n"
+            "四阶力常数计算依赖三阶力常数"
 
     # ✅ 计算非谐性力常数（完整或热导率模式）
-    if cal_anhar_fcs or cal_ther_cond:
+    if cal_3rd_order or cal_4th_order or cal_ther_cond:
         # ✅ 直接从 metadata 获取，而不是推导
         num_anhar = displacement_metadata.get('n_anharmonic', 0)
 
@@ -696,20 +701,20 @@ def generate_frequencies_eigenvectors(
             logger.info("=" * 80)
 
             # 根据模式设置计算参数
-            if cal_anhar_fcs:
-                # 模式1: 完整非谐性（2+3+4阶）
+            if cal_4th_order:
+                # 模式1: 四阶力常数（2+3+4阶）
                 max_order = 4
                 nbody_str = "2 3 4"
                 cutoff_str = (
                     f"--c3 {float(fcs_cutoff_radius[1] / 1.89)} "
                     f"--c4 {float(fcs_cutoff_radius[2] / 1.89)}"
                 )
-                logger.info("计算完整非谐力常数（2+3+4 阶）")
+                logger.info("计算四阶力常数（2+3+4 阶）")
                 logger.info(f"   - 3阶截断: {fcs_cutoff_radius[1]} Bohr")
                 logger.info(f"   - 4阶截断: {fcs_cutoff_radius[2]} Bohr")
 
-            elif cal_ther_cond:
-                # 模式2: 热导率（2+3阶）
+            elif cal_3rd_order or cal_ther_cond:
+                # 模式2: 三阶力常数（2+3阶）
                 max_order = 3
                 nbody_str = "2 3"
                 cutoff_str = f"--c3 {float(fcs_cutoff_radius[1] / 1.89)}"
@@ -773,8 +778,10 @@ def generate_frequencies_eigenvectors(
             
         else:
             logger.warning("="*60)
-            if cal_anhar_fcs:
-                logger.warning("cal_anhar_fcs=True but no anharmonic displacement data found!")
+            if cal_4th_order:
+                logger.warning("cal_4th_order=True but no anharmonic displacement data found!")
+            elif cal_3rd_order:
+                logger.warning("cal_3rd_order=True but no anharmonic displacement data found!")
             elif cal_ther_cond:
                 logger.warning("cal_ther_cond=True but no anharmonic displacement data found!")
             logger.warning(f"Total displacements: {dataset_forces_array_disp.shape[0]}")
@@ -789,12 +796,12 @@ def generate_frequencies_eigenvectors(
         logger.info("纯谐波模式：仅计算二阶力常数")
         logger.info("=" * 80)
 
-    # 声子重整化（仅在完整非谐性模式下可选）
-    # 声子重整化（仅在完整非谐性模式下可选）
+
+    # 声子重整化（仅在四阶力常数模式下可选）
     if renorm_phonon:
-        if not cal_anhar_fcs:
+        if not cal_4th_order:
             logger.warning("=" * 60)
-            logger.warning("声子重整化需要完整的非谐性力常数 (cal_anhar_fcs=True)")
+            logger.warning("声子重整化需要四阶力常数 (cal_4th_order=True)")
             logger.warning("当前模式不支持声子重整化，跳过此步骤")
             logger.warning("=" * 60)
         else:
