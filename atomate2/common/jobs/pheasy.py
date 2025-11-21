@@ -688,22 +688,22 @@ def generate_frequencies_eigenvectors(
         actual_total = dataset_forces_array_disp.shape[0]
 
         if expected_total != actual_total:
-               if actual_total < num_har:
-                   raise ValueError(
-                       f"位移数据严重不足！\n"
-                       f"  - 预期至少 {num_har} 个谐波位移\n"
-                       f"  - 实际只有 {actual_total} 个总位移\n"
-                       f"数据已损坏，无法继续计算"
-                   )
-               logger.warning(
-                   f"数据不一致警告:\n"
-                   f"  - 预期位移数: {expected_total} (谐波: {num_har}, 非谐: {num_anhar})\n"
-                   f"  - 实际位移数: {actual_total}\n"
-                   f"  - 差值: {actual_total - expected_total}\n"
-                   f"将自动调整非谐位移数为: {actual_total - num_har}"
-               )
-               # ✅ 使用实际值，但记录警告
-               num_anhar = actual_total - num_har
+            if actual_total < num_har:
+                raise ValueError(
+                    f"位移数据严重不足！\n"
+                    f"  - 预期至少 {num_har} 个谐波位移\n"
+                    f"  - 实际只有 {actual_total} 个总位移\n"
+                    f"数据已损坏，无法继续计算"
+                )
+            logger.warning(
+                f"数据不一致警告:\n"
+                f"  - 预期位移数: {expected_total} (谐波: {num_har}, 非谐: {num_anhar})\n"
+                f"  - 实际位移数: {actual_total}\n"
+                f"  - 差值: {actual_total - expected_total}\n"
+                f"将自动调整非谐位移数为: {actual_total - num_har}"
+            )
+            # ✅ 使用实际值，但记录警告
+            num_anhar = actual_total - num_har
         if num_anhar > 0:
             logger.info("=" * 80)
 
@@ -712,9 +712,10 @@ def generate_frequencies_eigenvectors(
                 # 模式1: 四阶力常数（2+3+4阶）
                 max_order = 4
                 nbody_str = "2 3 4"
+                BOHR_TO_ANGSTROM = 0.529177  # 物理常数: 1 Bohr = 0.529177 Angstrom
                 cutoff_str = (
-                    f"--c3 {float(fcs_cutoff_radius[1] / 1.89)} "
-                    f"--c4 {float(fcs_cutoff_radius[2] / 1.89)}"
+                    f"--c3 {float(fcs_cutoff_radius[1] * BOHR_TO_ANGSTROM)} "
+                    f"--c4 {float(fcs_cutoff_radius[2] * BOHR_TO_ANGSTROM)}"
                 )
                 logger.info("计算四阶力常数（2+3+4 阶）")
                 logger.info(f"   - 3阶截断: {fcs_cutoff_radius[1]} Bohr")
@@ -724,7 +725,7 @@ def generate_frequencies_eigenvectors(
                 # 模式2: 三阶力常数（2+3阶）
                 max_order = 3
                 nbody_str = "2 3"
-                cutoff_str = f"--c3 {float(fcs_cutoff_radius[1] / 1.89)}"
+                cutoff_str = f"--c3 {float(fcs_cutoff_radius[1] * BOHR_TO_ANGSTROM)}"
                 logger.info("计算三阶力常数（用于热导率：2+3 阶）")
                 logger.info(f"   - 3阶截断: {fcs_cutoff_radius[1]} Bohr")
 
