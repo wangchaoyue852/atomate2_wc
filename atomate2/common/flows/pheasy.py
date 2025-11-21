@@ -81,23 +81,23 @@ class BasePhononMaker(PurePhonopyMaker, ABC):
     displacement: float
         displacement distance for phonons, for most cases 0.01 A is a good choice,
         but it can be increased to 0.02 A for heavier elements.
-    num_displaced_supercells: int
+	 num_displaced_supercells: int
         number of displacements to be generated using a random-displacement approach
         for harmonic phonon calculations. The default value is 0 and the number of
         displacements is automatically determined by the number of atoms in the
         supercell and its space group.
-        
-    # ========== 修改：新的力常数控制参数 ==========
-    cal_3rd_order: bool = False  # ← 新增：控制 3 阶力常数
-    cal_4th_order: bool = False  # ← 替代原来的 cal_anhar_fcs
-    # ========== 修改：应用控制参数 ==========
-    cal_ther_cond: bool = False  # ← 纯粹控制是否计算热导率
-    renorm_phonon: bool = False  # ← 纯粹控制是否重整化
-    
-    cal_anhar_fcs: bool
-        if set to True, anharmonic force constants(FCs) up to fourth-order FCs will
-        be calculated. The default value is False, and only harmonic phonons will
-        be calculated.
+    cal_3rd_order: bool
+        if set to True, third-order force constants will be calculated.
+        Default is False.
+    cal_4th_order: bool
+        if set to True, fourth-order force constants will be calculated.
+        Default is False. Requires cal_3rd_order=True.
+	 cal_ther_cond: bool
+        if set to True, thermal conductivity will be calculated using third-order FCs.
+        Default is False.
+    renorm_phonon: bool
+        if set to True, phonon renormalization will be calculated using up to
+        fourth-order FCs. Requires cal_4th_order=True. Default is False.
     displacement_anhar: float
         displacement distance for anharmonic force constants(FCs) up to fourth-order
         FCs, for most cases 0.08 A is a good choice, but it can be increased to 0.1 A.
@@ -181,7 +181,8 @@ class BasePhononMaker(PurePhonopyMaker, ABC):
     symprec: float = 1e-3
     displacement: float = 0.01
     num_displaced_supercells: int = 0
-    cal_anhar_fcs: bool = False
+    cal_3rd_order: bool = False
+    cal_4th_order: bool = False
     displacement_anhar: float = 0.08
     num_disp_anhar: int = 0
     fcs_cutoff_radius: list = field(
@@ -417,8 +418,9 @@ class BasePhononMaker(PurePhonopyMaker, ABC):
             supercell_matrix=supercell_matrix,
             displacement=self.displacement,
             num_displaced_supercells=self.num_displaced_supercells,
-            cal_anhar_fcs=self.cal_anhar_fcs,
-            cal_ther_cond=self.cal_ther_cond,  # ← 添加
+            cal_3rd_order=self.cal_3rd_order,
+            cal_4th_order=self.cal_4th_order,
+            cal_ther_cond=self.cal_ther_cond,
             displacement_anhar=self.displacement_anhar,
             num_disp_anhar=self.num_disp_anhar,
             fcs_cutoff_radius=self.fcs_cutoff_radius,
@@ -504,7 +506,8 @@ class BasePhononMaker(PurePhonopyMaker, ABC):
         return generate_frequencies_eigenvectors(
             supercell_matrix=supercell_matrix,
             displacement=self.displacement,
-            cal_anhar_fcs=self.cal_anhar_fcs,
+            cal_3rd_order=self.cal_3rd_order,
+            cal_4th_order=self.cal_4th_order,
             fcs_cutoff_radius=self.fcs_cutoff_radius,
             renorm_phonon=self.renorm_phonon,
             renorm_temp=self.renorm_temp,
