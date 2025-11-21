@@ -63,10 +63,17 @@ class PhononMaker(BasePhononMaker):
         for harmonic phonon calculations. The default value is 0 and the number of
         displacements is automatically determined by the number of atoms in the
         supercell and its space group.
-    cal_anhar_fcs: bool
-        if set to True, anharmonic force constants(FCs) up to fourth-order FCs will
-        be calculated. The default value is False, and only harmonic phonons will
-        be calculated.
+    cal_3rd_order: bool
+        if set to True, third-order force constants will be calculated.
+        Default is False.
+    cal_4th_order: bool
+        if set to True, fourth-order force constants will be calculated.
+        Default is False. Requires cal_3rd_order=True.
+    cal_ther_cond: bool
+        if set to True, thermal conductivity will be calculated. Default is False.
+    renorm_phonon: bool
+        if set to True, phonon renormalization will be calculated. Requires
+        cal_4th_order=True. Default is False.
     displacement_anhar: float
         displacement distance for anharmonic force constants(FCs) up to fourth-order
         FCs, for most cases 0.08 A is a good choice, but it can be increased to 0.1 A.
@@ -149,7 +156,10 @@ class PhononMaker(BasePhononMaker):
     name: str = "phonon"
     sym_reduce: bool = True
     symprec: float = SETTINGS.PHONON_SYMPREC
-    cal_anhar_fcs: bool = False
+    cal_3rd_order: bool = False
+    cal_4th_order: bool = False
+    cal_ther_cond: bool = False
+    renorm_phonon: bool = False
     displacement: float = 0.01
     displacement_anhar: float = 0.08
     num_displaced_supercells: int = 0
