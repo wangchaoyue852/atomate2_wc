@@ -431,7 +431,7 @@ def generate_frequencies_eigenvectors(
     
     # 验证1: 声子重整化需要四阶力常数
     if renorm_phonon and not cal_4th_order:
-        logger.error("参数冲突: renorm_phonon=True 需要cal_4th_order=True"")
+        logger.error("参数冲突: renorm_phonon=True 需要cal_4th_order=True")
         raise ValueError(
             "声子重整化需要四阶力常数（2+3+4 阶）！\n"
              "请设置: cal_4th_order=True"
@@ -662,7 +662,6 @@ def generate_frequencies_eigenvectors(
     fc_file = _DEFAULT_FILE_PATHS["force_constants"]
 
     # 首先检查参数组合的有效性
-    # 首先检查参数组合的有效性
     if cal_4th_order and cal_ther_cond:
         raise ValueError(
             "cal_4th_order 和 cal_ther_cond 不能同时为 True!\n"
@@ -677,6 +676,7 @@ def generate_frequencies_eigenvectors(
         raise ValueError(
             "cal_4th_order=True 需要 cal_3rd_order=True\n"
             "四阶力常数计算依赖三阶力常数"
+        )
 
     # ✅ 计算非谐性力常数（完整或热导率模式）
     if cal_3rd_order or cal_4th_order or cal_ther_cond:
@@ -688,15 +688,22 @@ def generate_frequencies_eigenvectors(
         actual_total = dataset_forces_array_disp.shape[0]
 
         if expected_total != actual_total:
-            logger.warning(
-                f"数据不一致警告:\n"
-                f"  - 预期位移数: {expected_total} (谐波: {num_har}, 非谐: {num_anhar})\n"
-                f"  - 实际位移数: {actual_total}\n"
-                f"  - 差值: {actual_total - expected_total}"
-            )
-            # ✅ 使用实际值，但记录警告
-            num_anhar = actual_total - num_har
-
+               if actual_total < num_har:
+                   raise ValueError(
+                       f"位移数据严重不足！\n"
+                       f"  - 预期至少 {num_har} 个谐波位移\n"
+                       f"  - 实际只有 {actual_total} 个总位移\n"
+                       f"数据已损坏，无法继续计算"
+                   )
+               logger.warning(
+                   f"数据不一致警告:\n"
+                   f"  - 预期位移数: {expected_total} (谐波: {num_har}, 非谐: {num_anhar})\n"
+                   f"  - 实际位移数: {actual_total}\n"
+                   f"  - 差值: {actual_total - expected_total}\n"
+                   f"将自动调整非谐位移数为: {actual_total - num_har}"
+               )
+               # ✅ 使用实际值，但记录警告
+               num_anhar = actual_total - num_har
         if num_anhar > 0:
             logger.info("=" * 80)
 
